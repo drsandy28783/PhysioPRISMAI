@@ -49,10 +49,17 @@ logger = logging.getLogger(__name__)
 
 openai.api_key = os.environ['OPENAI_API_KEY']
 
-sa_json = os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON']
-cred_dict = json.loads(sa_json)
-cred = credentials.Certificate(cred_dict)
-firebase_admin.initialize_app(cred, {'projectId': cred_dict.get('project_id')})
+# ─── FIREBASE INIT ───────────────────────────
+# Load the service-account JSON from a Render Secret File
+cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+if not cred_path:
+    raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS env-var")
+
+# Initialize the Admin SDK straight from the file
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)
+
+# Then get your Firestore client as usual
 db = firestore.client()
 
 def get_ai_suggestion(prompt: str) -> str:
