@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Patient Perspectives – Physiologic PRISM{% endblock %}
+
+{% block head %}
+<style>
+  .field-block { position: relative; margin-top: 20px; }
+  .field-block label { display: block; margin-bottom: 4px; font-weight: 500; }
+  .control-group { display: flex; align-items: center; gap: 8px; }
+  .control-group .input-field { flex: 1; }
+  .ai-btn { background: none; border: none; font-size: 1.2em; cursor: pointer; padding: 0; }
+  .ai-popup {
+    position: absolute;
+    top: 100%; right: 0;
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 8px;
+    max-width: 280px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 100;
+    margin-top: 4px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>Patient Perspectives for {{ patient_id }}</h2>
+  <form id="perspectives-form" method="POST" action="{{ url_for('perspectives', patient_id=patient_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% set fields = [
+      ['knowledge', 'Knowledge of the Illness', ['Excellent','Good','Fair','Poor','None']],
+      ['attribution', 'Illness Attribution', ['Biomedical','Psychosocial','Behavioral','Environmental','Others']],
+      ['expectation', 'Expectation About Illness', ['Short Term','Long Term','Unsure']],
+      ['consequences_awareness', 'Awareness of Consequences', ['Fully Aware','Partially Aware','Unaware']],
+      ['locus_of_control', 'Locus of Control', ['Internal','External']],
+      ['affective_aspect', 'Affective Aspect (Feelings Elicited)', ['Anxiety','Fear','Sadness','Anger','Frustration','Hopelessness','Acceptance','Others']]
+    ] %}
+
+    {% for name, label, opts in fields %}
+    <div class="field-block">
+      <label for="{{ name }}">{{ label }}</label>
+      <div class="control-group">
+        <select id="{{ name }}" name="{{ name }}" class="input-field" required>
+          <option value="" disabled selected>Select</option>
+          {% for opt in opts %}
+            <option value="{{ opt }}" {% if request.form[name] == opt %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+        <button type="button" class="ai-btn" data-field="{{ name }}" title="Ask AI follow-up">🧠</button>
+      </div>
+      <textarea id="{{ name }}_entry" name="{{ name }}_entry" class="input-field" rows="2" placeholder="Enter notes…">{{ request.form[name + '_entry'] or '' }}</textarea>
+      <div id="{{ name }}_popup" class="ai-popup"></div>
+    </div>
+    {% endfor %}
+
+    <div style="margin-top:24px; display:flex; gap:12px; align-items:center;">
+      <button type="button" id="gen_perspectives_dx" class="button" title="Generate provisional diagnosis">🩺</button>
+      <button type="submit" class="button">Save &amp; Continue to Initial Plan</button>
+      <a href="{{ url_for('subjective', patient_id=patient_id) }}" class="button" style="background:#ccc; color:#000;">&larr; Back to Subjective</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+

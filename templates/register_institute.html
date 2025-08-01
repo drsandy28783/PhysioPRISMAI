@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Register Institute Admin – Physiologic PRISM{% endblock %}
+
+{% block head %}
+<style>
+  /* Hide navbar on this page */
+  body > .navbar { display: none !important; }
+  .container { max-width: 500px; margin: 60px auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Register as Institute Admin</h2>
+    <form method="POST" action="{{ url_for('register_institute') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field-block">
+        <label for="name">Full Name</label>
+        <input id="name" type="text" name="name" class="input-field" placeholder="Full Name" required>
+      </div>
+
+      <div class="field-block">
+        <label for="email">Email</label>
+        <input id="email" type="email" name="email" class="input-field" placeholder="you@example.com" required>
+      </div>
+
+      <div class="field-block">
+        <label for="phone">Phone Number</label>
+        <input id="phone" type="text" name="phone" class="input-field" placeholder="Phone Number" required>
+      </div>
+
+      <div class="field-block">
+        <label for="password">Password</label>
+        <input id="password" type="password" name="password" class="input-field" placeholder="Password" required>
+      </div>
+
+      <div class="field-block">
+        <label for="institute">Institute Name</label>
+       <input id="institute" type="text" name="institute_name" class="input-field" placeholder="Institute Name" required>
+      </div>
+
+      <div style="margin-top: 24px; display: flex; gap: 12px;">
+        <button type="submit" class="button">Register Institute Admin</button>
+        <a href="{{ url_for('index') }}" class="button" style="background: #ccc; color: #000;">Cancel</a>
+      </div>
+
+    </form>
+  </div>
+{% endblock %}

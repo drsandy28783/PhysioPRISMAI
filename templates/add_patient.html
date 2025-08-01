@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}Add Patient – Physiologic PRISM{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Add New Patient</h2>
+    <form method="POST" id="add-patient-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group">
+            <label for="name">Patient Name:</label>
+            <input
+                class="input-field"
+                type="text"
+                id="name"
+                name="name"
+                required
+                minlength="2"
+                maxlength="100"
+                placeholder="Enter full name"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="age_sex">Age / Sex:</label>
+            <input
+                class="input-field"
+                type="text"
+                id="age_sex"
+                name="age_sex"
+                required
+                maxlength="20"
+                placeholder="e.g. 45/M or 32/F"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="contact">Contact Details:</label>
+            <input
+                class="input-field"
+                type="tel"
+                id="contact"
+                name="contact"
+                required
+                maxlength="20"
+                placeholder="Phone number"
+            >
+        </div>
+
+        <div class="form-group">
+            <label for="present_history">Present History:</label>
+            <textarea
+                class="input-field"
+                id="present_history"
+                name="present_history"
+                rows="3"
+                required
+                placeholder="Brief description of current complaint"
+            >{{ request.form.present_history or '' }}</textarea>
+        </div>
+
+        <div class="form-group" style="display: flex; align-items: center;">
+            <label for="past_history" style="margin-right: 8px;">Past History:</label>
+            <button
+                type="button"
+                id="suggest_questions"
+                class="ai-btn"
+                title="Suggest follow-up questions"
+                style="background:none; border:none; font-size:1.4em; cursor:pointer;"
+            >🧠</button>
+        </div>
+
+        <div class="form-group">
+            <textarea
+                class="input-field"
+                id="past_history"
+                name="past_history"
+                rows="3"
+                required
+                placeholder="Enter any past medical or surgical history"
+            >{{ request.form.past_history or '' }}</textarea>
+        </div>
+
+        <div id="ai_response" style="white-space: pre-wrap; background:#f0f0f0; padding:8px; border-radius:4px; margin-bottom:16px;"></div>
+
+        <div class="form-group" style="display: flex; gap:8px; align-items: center;">
+            <button
+                type="button"
+                id="gen_diagnosis"
+                class="ai-btn"
+                title="Generate provisional diagnosis"
+                style="background:none; border:none; font-size:1.4em; cursor:pointer;"
+            >🩺</button>
+            <button type="submit" class="button">Save Patient & Next</button>
+        </div>
+
+        <div class="form-group">
+            <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

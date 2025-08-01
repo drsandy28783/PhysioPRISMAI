@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Register with Institute – Physiologic PRISM{% endblock %}
+
+{% block head %}
+<style>
+  /* Hide navbar on registration page */
+  body > .navbar { display: none !important; }
+  .container { max-width: 500px; margin: 60px auto; }
+  .input-field, input[list] {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 16px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Register as Institute Physiotherapist</h2>
+    <form method="POST" action="{{ url_for('register_with_institute') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <input class="input-field" type="text" name="name" placeholder="Full Name" required>
+      <input class="input-field" type="email" name="email" placeholder="Email" required>
+      <input class="input-field" type="text" name="phone" placeholder="Phone Number" required>
+      <input class="input-field" type="password" name="password" placeholder="Password" required>
+
+      <label for="institute">Institute</label>
+      <input list="institute-list" name="institute_email" id="institute" class="input-field" placeholder="Select or type institute" required>
+      <datalist id="institute-list">
+      {% for inst in institutes %}
+      <option value="{{ inst.institute_name }}">
+      {% endfor %}
+      </datalist>
+
+      <button type="submit" class="button">Register with Institute</button>
+      <a href="{{ url_for('index') }}" class="button" style="background: #ccc; color: #000; margin-left: 8px;">Cancel</a>
+    </form>
+  </div>
+{% endblock %}

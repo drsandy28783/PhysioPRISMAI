@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Follow-Up History – Physiologic PRISM{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Follow-Up History for {{ patient.name }} (ID: {{ patient.patient_id }})</h2>
+
+    {% if followups %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Session #</th>
+            <th>Date</th>
+            <th>Grade</th>
+            <th>Perception</th>
+            <th>Feedback</th>
+            <th>Treatment Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in followups %}
+          <tr>
+            <td>{{ f.session_number }}</td>
+            <td>{{ f.session_date | datetimeformat }}</td>
+            <td>{{ f.grade }}</td>
+            <td>{{ f.perception }}</td>
+            <td>{{ f.feedback }}</td>
+            <td>{{ f.treatment_plan }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No follow-up records found for this patient.</p>
+    {% endif %}
+
+    <div style="margin-top: 24px; display: flex; gap: 12px;">
+      <a href="{{ url_for('view_patients') }}" class="button">&larr; Back to Patients</a>
+      <a href="{{ url_for('download_report', patient_id=patient.patient_id) }}" class="button">Download PDF Report</a>
+    </div>
+  </div>
+{% endblock %}

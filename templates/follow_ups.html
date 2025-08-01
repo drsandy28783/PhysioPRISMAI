@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Follow-Up Sessions – Physiologic PRISM{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Follow-Up History for {{ patient.name }} (ID: {{ patient.patient_id }})</h2>
+
+    {% if followups %}
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Session #</th>
+            <th>Date</th>
+            <th>Grade</th>
+            <th>Perception</th>
+            <th>Feedback</th>
+            <th>Treatment Plan</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in followups %}
+            <tr>
+              <td>{{ f.session_number }}</td>
+              <td>{{ f.session_date | datetimeformat }}</td>
+              <td>{{ f.grade }}</td>
+              <td>{{ f.perception or f.belief_treatment }}</td>
+              <td>{{ f.feedback or f.belief_feedback }}</td>
+              <td>{{ f.treatment_plan }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No follow-up records found for this patient.</p>
+    {% endif %}
+
+    <h3>Add New Follow-Up</h3>
+    <form method="POST" action="{{ url_for('follow_ups', patient_id=patient.patient_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <label>Session Number:</label>
+      <input type="number" name="session_number" class="input-field" value="{{ followups|length + 1 }}" readonly>
+
+      <label>Date:</label>
+      <input type="date" name="session_date" class="input-field" required>
+
+      <label>Grade of Achievement:</label>
+      <select name="grade" class="input-field" required>
+        <option value="">Select</option>
+        <option value="Not Achieved">Not Achieved</option>
+        <option value="Partially Achieved">Partially Achieved</option>
+        <option value="Fully Achieved">Fully Achieved</option>
+      </select>
+
+      <label>Perception of Treatment:</label>
+      <select name="belief_treatment" class="input-field">
+        <option value="">Select</option>
+        <option value="Very Effective">Very Effective</option>
+        <option value="Somewhat Effective">Somewhat Effective</option>
+        <option value="Not Effective">Not Effective</option>
+      </select>
+
+      <label>Feedback:</label>
+      <textarea name="belief_feedback" class="input-field" rows="3" placeholder="Enter feedback..."></textarea>
+
+      <label>Plan for Next Treatment:</label>
+      <div class="field-block control-group">
+        <textarea
+          id="plan_next"
+          name="plan_next"
+          class="input-field"
+          rows="3"
+          placeholder="Describe treatment strategy…"
+        >{{ request.form.plan_next or '' }}</textarea>
+        <button
+          type="button"
+          class="ai-btn"
+          title="Ask AI for next‑session plan"
+        >🧠</button>
+      </div>
+      <div id="plan_next_popup" class="ai-popup"></div>
+
+      <div id="ai_summary" class="ai-popup" style="white-space: pre-wrap; background: #f0f0f0; padding: 8px; border-radius: 4px; margin-top: 8px;"></div>
+
+      <div style="margin-top:16px; display:flex; gap:12px;">
+        <button type="submit" class="button">Save Follow-Up</button>
+        <a href="{{ url_for('view_patients') }}" class="button">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+

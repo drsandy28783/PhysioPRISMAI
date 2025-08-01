@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Manage Institute Physiotherapists – Physiologic PRISM{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Manage Institute Physiotherapists</h2>
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td>{{ user.name }}</td>
+          <td>{{ user.email }}</td>
+          <td>{{ user.phone }}</td>
+          <td>
+            {% if user.is_active %}✅ Active{% else %}❌ Inactive{% endif %}
+          </td>
+          <td>
+            {% if user.is_active %}
+              <form action="{{ url_for('deactivate_user', user_id=user.id) }}" method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="button" style="background-color: crimson;">Deactivate</button>
+              </form>
+            {% else %}
+              <form action="{{ url_for('reactivate_user', user_id=user.id) }}" method="post" style="display:inline;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="button">Reactivate</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <br>
+    <a href="{{ url_for('admin_dashboard') }}">
+      <button class="button">⬅ Back to Admin Dashboard</button>
+    </a>
+  </div>
+{% endblock %}

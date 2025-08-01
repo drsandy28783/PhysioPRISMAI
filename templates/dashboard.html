@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Dashboard – Physiologic PRISM{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Welcome, {{ name }}!</h2>
+
+    <a href="{{ url_for('add_patient') }}"><button class="button">➕ Add New Patient</button></a>
+    <a href="{{ url_for('view_patients') }}"><button class="button">📁 View All Patients</button></a>
+    <a href="{{ url_for('logout') }}"><button class="button">🚪 Logout</button></a>
+  </div>
+{% endblock %}

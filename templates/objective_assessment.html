@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Objective Assessment – Physiologic PRISM{% endblock %}
+
+{% block head %}
+<style>
+  .field-block { position: relative; margin-top: 20px; }
+  .field-block label { display: block; margin-bottom: 4px; font-weight: 500; }
+
+  .input-field {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+  }
+
+  /* absolutely position the AI button and center it on the select */
+  .ai-btn {
+    position: absolute;
+    top: 50%;
+    right: 0.75rem;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    font-size: 1.4em;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  .ai-popup {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    max-width: 300px;
+    background: #fff;
+    padding: 0.75rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    display: none;
+    z-index: 100;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>Objective Assessment for {{ patient_id }}</h2>
+
+  <form id="objective-assessment-form" method="POST"
+        action="{{ url_for('objective_assessment', patient_id=patient_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="field-block">
+      <label for="plan">Plan:</label>
+      <select id="plan" name="plan" class="input-field" required>
+        <option value="">-- Select --</option>
+        <option value="no_mod" {% if plan=='no_mod' %}selected{% endif %}>
+          Comprehensive without modification
+        </option>
+        <option value="mod" {% if plan=='mod' %}selected{% endif %}>
+          Comprehensive with modifications
+        </option>
+      </select>
+      <button type="button" class="ai-btn" data-field="plan"
+              title="Ask AI which tests to perform">🧠</button>
+      <div id="plan_popup" class="ai-popup"></div>
+    </div>
+
+    <div class="field-block">
+      <label for="plan_details">Assessment Notes / Modifications:</label>
+      <textarea id="plan_details" name="plan_details" class="input-field"
+                rows="5" placeholder="Enter observations or modifications…">
+        {{ plan_details or '' }}
+      </textarea>
+    </div>
+
+    <div style="margin-top:24px; display:flex; gap:12px; align-items:center;">
+      <button type="button" id="gen_provisional_dx" class="button">
+        🩺 Generate Provisional Diagnosis
+      </button>
+      <button type="submit" class="button">Save &amp; Continue</button>
+      <a href="{{ url_for('clinical_flags', patient_id=patient_id) }}"
+         class="button" style="background:#ccc;color:#000;">
+        &larr; Back to Flags
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Edit Patient Details – Physiologic PRISM{% endblock %}
+
+{% block head %}
+<style>
+  .field-block { margin-top: 20px; }
+  .field-block label { display: block; font-weight: 500; margin-bottom: 4px; }
+  .input-field { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+  .button-group { display: flex; gap: 12px; margin-top: 24px; }
+</style>
+{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Edit Patient Details – {{ patient['patient_id'] }}</h2>
+    <form method="POST" action="{{ url_for('edit_patient', patient_id=patient['patient_id']) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field-block">
+        <label for="name">Name:</label>
+        <input id="name" type="text" name="name" class="input-field" value="{{ patient['name'] }}" required/>
+      </div>
+
+      <div class="field-block">
+        <label for="age_sex">Age / Sex:</label>
+        <input id="age_sex" type="text" name="age_sex" class="input-field" value="{{ patient['age_sex'] }}" required/>
+      </div>
+
+      <div class="field-block">
+        <label for="contact">Contact:</label>
+        <input id="contact" type="text" name="contact" class="input-field" value="{{ patient['contact'] }}" required/>
+      </div>
+
+      <div class="button-group">
+        <button type="submit" class="button">Update Patient</button>
+        <a href="{{ url_for('dashboard') }}" class="button" style="background:#ccc; color:#000;">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

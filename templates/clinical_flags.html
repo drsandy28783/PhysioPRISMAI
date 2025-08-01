@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Clinical Flags – Physiologic PRISM{% endblock %}
+{% block head %}
+<style>
+  .field-block { margin-top:20px; position:relative; }
+  .ai-btn { background:none; border:none; cursor:pointer; font-size:1.2em; }
+  .ai-hint { display:none; margin-top:8px; padding:8px; background:#fafafa; border-left:4px solid #7cb342; }
+  .highlight { background: rgba(124,179,66,0.1); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+  <h2>Clinical Flags for {{ patient_id }}</h2>
+  <form id="clinical-flags-form" method="POST"
+        action="{{ url_for('clinical_flags', patient_id=patient_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    {% set flags = [
+      ['red_flags',    'Red Flags',    'Any red-flag symptoms or history…'],
+      ['yellow_flags', 'Yellow Flags (Psychosocial)', 'Any psychosocial risk factors…'],
+      ['black_flags',  'Black Flags (Systems/Environment)', 'Any workplace or system-level barriers…'],
+      ['blue_flags',   'Blue Flags (Work-Related)', 'Any work-related attitudes or demands…']
+    ] %}
+
+    {% for name, label, placeholder in flags %}
+      <div class="field-block" id="{{ name }}_block">
+        <label for="{{ name }}">{{ label }}</label>
+        <textarea id="{{ name }}" name="{{ name }}"
+                  class="input-field" rows="3"
+                  placeholder="{{ placeholder }}">{{ request.form[name] or '' }}</textarea>
+        <button type="button" class="ai-btn" title="Ask AI follow-up"
+                data-field="{{ name }}">🧠</button>
+        <div id="{{ name }}_hint" class="ai-hint"></div>
+      </div>
+    {% endfor %}
+
+    <div style="margin-top:24px; display:flex; gap:12px;">
+      <button type="submit" class="button">Save &amp; Continue</button>
+      <a href="{{ url_for('chronic_disease',patient_id=patient_id) }}"
+         class="button" style="background:#ccc;color:#000;">← Back</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

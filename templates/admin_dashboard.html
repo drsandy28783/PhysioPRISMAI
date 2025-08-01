@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Institute Admin Dashboard – Physiologic PRISM{% endblock %}
+
+{% block content %}
+  <div class="container">
+    <h2>Welcome {{ name }} (Admin)</h2>
+    <p><strong>Institute:</strong> {{ institute }}</p>
+
+    <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 24px;">
+      <a href="{{ url_for('approve_physios') }}">
+        <button class="button">Approve Pending Users</button>
+      </a>
+
+      <a href="{{ url_for('audit_logs') }}">
+        <button class="button">View Audit Logs</button>
+      </a>
+
+      <a href="{{ url_for('dashboard') }}">
+        <button class="button">Go to Main Dashboard</button>
+      </a>
+    </div>
+  </div>
+{% endblock %}
