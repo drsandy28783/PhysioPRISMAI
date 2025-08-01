@@ -51,9 +51,40 @@ openai.api_key = os.environ['OPENAI_API_KEY']
 
 # ─── FIREBASE INIT ───────────────────────────
 # Load the service-account JSON from a Render Secret File
+# ─── DEBUG: Inspect secret-file mount ─────────────────────────
+SECRETS_DIR = "/etc/secrets"
+print("DEBUG: /etc/secrets exists?", os.path.isdir(SECRETS_DIR))
+if os.path.isdir(SECRETS_DIR):
+    print("DEBUG: /etc/secrets contents:", os.listdir(SECRETS_DIR))
+
+# ─── FETCH ENV-VAR & SHOW PATH ─────────────────────────────────
 cred_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+print(f"DEBUG: GOOGLE_APPLICATION_CREDENTIALS = {cred_path!r}")
 if not cred_path:
-    raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS env-var")
+    raise RuntimeError("Missing GOOGLE_APPLICATION_CREDENTIALS")
+
+# ─── TRY LOADING & INITIALIZING ───────────────────────────────
+try:
+    # 1) Read & parse the JSON
+    with open(cred_path, "r") as f:
+        sa = json.load(f)
+    print("DEBUG: Loaded service-account JSON, project_id =", sa.get("project_id"))
+
+    # 2) Initialize Firebase
+    cred = credentials.Certificate(cred_path)
+    firebase_admin.initialize_app(cred, {"projectId": sa.get("project_id")})
+    print("DEBUG: Firebase Admin SDK initialized successfully")
+
+    # 3) Test Firestore access
+    db = firestore.client()
+    col_ids = [c.id for c in db.collections()]
+    print("DEBUG: Firestore collections:", col_ids)
+
+except Exception:
+    print("DEBUG: Exception during Firebase init:")
+    traceback.print_exc()
+    # re-raise so Render still fails if it’s truly broken
+    raise
 
 # Initialize the Admin SDK straight from the file
 cred = credentials.Certificate(cred_path)
