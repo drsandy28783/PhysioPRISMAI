@@ -87,8 +87,6 @@ except Exception:
     raise
 
 # Initialize the Admin SDK straight from the file
-cred = credentials.Certificate(cred_path)
-firebase_admin.initialize_app(cred)
 
 # Then get your Firestore client as usual
 db = firestore.client()
