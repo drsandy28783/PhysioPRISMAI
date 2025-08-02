@@ -326,31 +326,47 @@ def view_patients():
     id_f = request.args.get('patient_id', '').strip()
 
     try:
+        # Start with base collection
         patients_ref = db.collection('patients')
         
-        # Apply access control first
+        # Apply access control using the new filter syntax
         if session.get('is_admin') == 1:
-            query = patients_ref.where('institute', '==', session.get('institute'))
+            # Admin sees all patients in their institute
+            query = patients_ref.where(filter=FieldFilter('institute', '==', session.get('institute')))
         else:
-            query = patients_ref.where('physio_id', '==', session.get('user_id'))
+            # Individual physio sees only their patients
+            query = patients_ref.where(filter=FieldFilter('physio_id', '==', session.get('user_id')))
         
-        # Apply search filters (avoid conflicts)
+        # Apply search filters
         if id_f:
-            query = query.where('patient_id', '==', id_f)
+            # Search by patient ID
+            query = query.where(filter=FieldFilter('patient_id', '==', id_f))
         elif name_f:
-            query = query.where('name', '>=', name_f).where('name', '<=', name_f + '\uf8ff').order_by('name')
+            # Search by name (case-sensitive prefix search)
+            query = query.where(filter=FieldFilter('name', '>=', name_f)) \
+                         .where(filter=FieldFilter('name', '<=', name_f + '\uf8ff')) \
+                         .order_by('name')
         else:
+            # Default: show all patients ordered by creation date
             query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
 
+        # Execute query and get results
         docs = query.stream()
-        patients = [doc.to_dict() for doc in docs]
-        
+        patients = []
+        for doc in docs:
+            patient_data = doc.to_dict()
+            patient_data['doc_id'] = doc.id  # Add document ID for reference
+            patients.append(patient_data)
+
         print(f"DEBUG: Found {len(patients)} patients for user {session.get('user_id')}")
+        print(f"DEBUG: Session data - user_id: {session.get('user_id')}, is_admin: {session.get('is_admin')}, institute: {session.get('institute')}")
+        
         return render_template('view_patients.html', patients=patients)
 
     except Exception as e:
-        print(f"ERROR: {e}")
-        flash("Could not load patients. Please try again.", "error")
+        print(f"ERROR in view_patients: {e}")
+        logger.error(f"Firestore error in view_patients: {e}", exc_info=True)
+        flash("Could not load your patients list. Please try again later.", "error")
         return redirect(url_for('dashboard'))
 
 
