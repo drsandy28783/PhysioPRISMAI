@@ -296,44 +296,62 @@ def admin_dashboard():
         institute=session.get('institute')
     )
 
-
+@app.route('/debug_patients')
+@login_required()
+def debug_patients():
+    try:
+        # Get all patients for debugging
+        docs = db.collection('patients').limit(5).stream()
+        patients = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['doc_id'] = doc.id
+            patients.append(data)
+        
+        return {
+            'session_user_id': session.get('user_id'),
+            'session_institute': session.get('institute'),
+            'session_is_admin': session.get('is_admin'),
+            'total_patients_found': len(patients),
+            'sample_patients': patients
+        }
+    except Exception as e:
+        return {'error': str(e)}
  
 
 @app.route('/view_patients')
 @login_required()
 def view_patients():
-        name_f = request.args.get('name')
-        id_f   = request.args.get('patient_id')
+    name_f = request.args.get('name', '').strip()
+    id_f = request.args.get('patient_id', '').strip()
 
-        try:
-            # 1) Base collection
-            coll = db.collection('patients')
-            q = coll
+    try:
+        patients_ref = db.collection('patients')
+        
+        # Apply access control first
+        if session.get('is_admin') == 1:
+            query = patients_ref.where('institute', '==', session.get('institute'))
+        else:
+            query = patients_ref.where('physio_id', '==', session.get('user_id'))
+        
+        # Apply search filters (avoid conflicts)
+        if id_f:
+            query = query.where('patient_id', '==', id_f)
+        elif name_f:
+            query = query.where('name', '>=', name_f).where('name', '<=', name_f + '\uf8ff').order_by('name')
+        else:
+            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
 
-            # 2) Apply filters
-            if name_f:
-                # Note: Firestore requires an order_by on the same field when using >=
-                q = q.where('name', '>=', name_f).order_by('name')
-            if id_f:
-                q = q.where('patient_id', '==', id_f)
-
-            # 3) Restrict by institute or physio
-            if session.get('is_admin') == 1:
-                q = q.where('institute', '==', session.get('institute'))
-            else:
-                q = q.where('physio_id', '==', session.get('user_id'))
-
-            # 4) Execute and materialize
-            docs = q.stream()
-            patients = [doc.to_dict() for doc in docs]
-
-        except GoogleAPIError as e:
-            logger.error(f"Firestore error in view_patients: {e}", exc_info=True)
-            flash("Could not load your patients list. Please try again later.", "error")
-            return redirect(url_for('dashboard'))
-
-        # 5) Render on success
+        docs = query.stream()
+        patients = [doc.to_dict() for doc in docs]
+        
+        print(f"DEBUG: Found {len(patients)} patients for user {session.get('user_id')}")
         return render_template('view_patients.html', patients=patients)
+
+    except Exception as e:
+        print(f"ERROR: {e}")
+        flash("Could not load patients. Please try again.", "error")
+        return redirect(url_for('dashboard'))
 
 
 
