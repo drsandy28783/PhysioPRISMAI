@@ -329,38 +329,36 @@ def view_patients():
         # Start with base collection
         patients_ref = db.collection('patients')
         
-        # Apply access control using the new filter syntax
+        # Apply access control first (this is the main filter)
         if session.get('is_admin') == 1:
             # Admin sees all patients in their institute
             query = patients_ref.where(filter=FieldFilter('institute', '==', session.get('institute')))
         else:
-            # Individual physio sees only their patients
+            # Individual physio sees only their patients  
             query = patients_ref.where(filter=FieldFilter('physio_id', '==', session.get('user_id')))
         
-        # Apply search filters
+        # Apply search filters WITHOUT ordering to avoid index requirements
         if id_f:
-            # Search by patient ID
+            # Search by patient ID only
             query = query.where(filter=FieldFilter('patient_id', '==', id_f))
         elif name_f:
-            # Search by name (case-sensitive prefix search)
+            # Search by name only (no ordering)
             query = query.where(filter=FieldFilter('name', '>=', name_f)) \
-                         .where(filter=FieldFilter('name', '<=', name_f + '\uf8ff')) \
-                         .order_by('name')
-        else:
-            # Default: show all patients ordered by creation date
-            query = query.order_by('created_at', direction=firestore.Query.DESCENDING)
-
+                         .where(filter=FieldFilter('name', '<=', name_f + '\uf8ff'))
+        
         # Execute query and get results
         docs = query.stream()
         patients = []
         for doc in docs:
             patient_data = doc.to_dict()
-            patient_data['doc_id'] = doc.id  # Add document ID for reference
+            patient_data['doc_id'] = doc.id
             patients.append(patient_data)
 
+        # Sort in Python instead of Firestore (when no search filters)
+        if not name_f and not id_f:
+            patients.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+
         print(f"DEBUG: Found {len(patients)} patients for user {session.get('user_id')}")
-        print(f"DEBUG: Session data - user_id: {session.get('user_id')}, is_admin: {session.get('is_admin')}, institute: {session.get('institute')}")
-        
         return render_template('view_patients.html', patients=patients)
 
     except Exception as e:
