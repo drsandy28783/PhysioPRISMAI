@@ -4,12 +4,13 @@
 {% block head %}
 <style>
   .filter-form { margin-bottom: 16px; }
+  .debug-info { background: #f0f0f0; padding: 10px; margin: 5px 0; font-size: 12px; }
 </style>
 {% endblock %}
 
 {% block content %}
   <div class="container">
-    <h2>Patient List</h2>
+    <h2>Patient List (Debug Mode)</h2>
 
     <form method="GET" class="filter-form">
       <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
@@ -23,47 +24,48 @@
       </div>
     </form>
 
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Patient Name</th>
-          <th>Age/Sex</th>
-          <th>Contact</th>
-          <th>Date Added</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for patient in patients %}
-        <tr>
-          <td>{{ patient.patient_id }}</td>
-          <td>{{ patient.name }}</td>
-          <td>{{ patient.age_sex }}</td>
-          <td>{{ patient.contact }}</td>
-          <td>
-  {% if patient.get('created_at') %}
-    {% set created_at = patient.created_at %}
-    {% if created_at and hasattr(created_at, 'strftime') %}
-      {{ created_at.strftime('%Y-%m-%d') }}
-    {% else %}
-      {{ created_at|string if created_at else 'N/A' }}
-    {% endif %}
-  {% else %}
-    N/A
-  {% endif %}
-</td>
-          <td style="display: flex; flex-direction: column; gap: 4px;">
-            <a href="{{ url_for('edit_patient', patient_id=patient.patient_id) }}" class="button">Edit</a>
-            <a href="{{ url_for('follow_ups', patient_id=patient.patient_id) }}" class="button green">Add Follow-Up</a>
-            <a href="{{ url_for('view_follow_ups', patient_id=patient.patient_id) }}" class="button green">View Follow-Ups</a>
-            <a href="{{ url_for('patient_report', patient_id=patient.patient_id) }}" class="button">Report</a>
-            <a href="{{ url_for('download_report', patient_id=patient.patient_id) }}" class="button">PDF</a>
-          </td>
-        </tr>
+    {% if patients %}
+    <p><strong>Found {{ patients|length }} patients</strong></p>
+    
+    {% for patient in patients %}
+    <div style="border: 1px solid #ccc; margin: 10px 0; padding: 15px;">
+      <h4>Patient {{ loop.index }}</h4>
+      
+      <!-- Show what we expect -->
+      <div>
+        <strong>Expected Data:</strong><br>
+        ID: {{ patient.patient_id or patient.doc_id or 'N/A' }}<br>
+        Name: {{ patient.name or 'NOT FOUND' }}<br>
+        Age/Sex: {{ patient.age_sex or 'NOT FOUND' }}<br>
+        Contact: {{ patient.contact or 'NOT FOUND' }}<br>
+        Created: {{ patient.created_at or 'NOT FOUND' }}<br>
+      </div>
+      
+      <!-- Show ALL available data -->
+      <div class="debug-info">
+        <strong>All Available Fields:</strong><br>
+        {% for key, value in patient.items() %}
+          <strong>{{ key }}:</strong> {{ value }}<br>
         {% endfor %}
-      </tbody>
-    </table>
+      </div>
+      
+      <div style="margin-top: 10px;">
+        <a href="{{ url_for('edit_patient', patient_id=patient.patient_id or patient.doc_id) }}" class="button">Edit</a>
+        <a href="{{ url_for('follow_ups', patient_id=patient.patient_id or patient.doc_id) }}" class="button green">Add Follow-Up</a>
+        <a href="{{ url_for('view_follow_ups', patient_id=patient.patient_id or patient.doc_id) }}" class="button green">View Follow-Ups</a>
+        <a href="{{ url_for('patient_report', patient_id=patient.patient_id or patient.doc_id) }}" class="button">Report</a>
+        <a href="{{ url_for('download_report', patient_id=patient.patient_id or patient.doc_id) }}" class="button">PDF</a>
+      </div>
+    </div>
+    {% endfor %}
+    
+    {% else %}
+    <div style="text-align: center; padding: 40px;">
+      <h3>No patients found</h3>
+      <p>You haven't added any patients yet, or no patients match your search criteria.</p>
+      <a href="{{ url_for('add_patient') }}" class="button">Add Your First Patient</a>
+    </div>
+    {% endif %}
 
     <div style="margin-top: 24px;">
       <a href="{{ url_for('dashboard') }}" class="button">&larr; Back to Dashboard</a>
