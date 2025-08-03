@@ -326,45 +326,139 @@ def view_patients():
     id_f = request.args.get('patient_id', '').strip()
 
     try:
+        print(f"DEBUG: Current session data:")
+        print(f"  - user_id: {session.get('user_id')}")
+        print(f"  - is_admin: {session.get('is_admin')}")
+        print(f"  - institute: {session.get('institute')}")
+        print(f"  - role: {session.get('role')}")
+
         # Start with base collection
         patients_ref = db.collection('patients')
         
-        # Apply access control first (this is the main filter)
+        # Apply access control first
         if session.get('is_admin') == 1:
             # Admin sees all patients in their institute
-            query = patients_ref.where(filter=FieldFilter('institute', '==', session.get('institute')))
+            if session.get('institute'):
+                query = patients_ref.where(filter=FieldFilter('institute', '==', session.get('institute')))
+                print(f"DEBUG: Admin query for institute: {session.get('institute')}")
+            else:
+                # If no institute, get all (fallback)
+                query = patients_ref
+                print("DEBUG: Admin query for all patients (no institute)")
         else:
-           query = patients_ref.where(filter=FieldFilter('physiotherapistId','==', session.get('user_id')))        
-        # Apply search filters WITHOUT ordering to avoid index requirements
+            # Regular physio sees only their patients
+            query = patients_ref.where(filter=FieldFilter('physiotherapistId', '==', session.get('user_id')))
+            print(f"DEBUG: Regular physio query for user_id: {session.get('user_id')}")
+        
+        # Apply search filters if provided
         if id_f:
-            # Search by patient ID only
+            print(f"DEBUG: Filtering by patient ID: {id_f}")
             query = query.where(filter=FieldFilter('patient_id', '==', id_f))
         elif name_f:
-            # Search by name only (no ordering)
+            print(f"DEBUG: Filtering by name: {name_f}")
+            # Use case-insensitive search
             query = query.where(filter=FieldFilter('name', '>=', name_f)) \
                          .where(filter=FieldFilter('name', '<=', name_f + '\uf8ff'))
         
         # Execute query and get results
         docs = query.stream()
         patients = []
+        
         for doc in docs:
             patient_data = doc.to_dict()
             patient_data['doc_id'] = doc.id
+            
+            # Ensure patient_id is set (use doc.id if not present in data)
+            if 'patient_id' not in patient_data:
+                patient_data['patient_id'] = doc.id
+                
             patients.append(patient_data)
+            print(f"DEBUG: Found patient: {patient_data.get('name', 'No name')} (ID: {patient_data.get('patient_id', 'No ID')})")
 
-        # Sort in Python instead of Firestore (when no search filters)
+        # Sort by creation date if no search filters
         if not name_f and not id_f:
-            patients.sort(key=lambda x: x.get('created_at', 0), reverse=True)
+            patients.sort(key=lambda x: x.get('created_at', 0) if x.get('created_at') else 0, reverse=True)
 
-        print(f"DEBUG: Found {len(patients)} patients for user {session.get('user_id')}")
+        print(f"DEBUG: Total patients found: {len(patients)}")
+        
+        # Debug: Print first patient data structure if any exist
+        if patients:
+            print(f"DEBUG: First patient data structure: {patients[0].keys()}")
+            
         return render_template('view_patients.html', patients=patients)
 
     except Exception as e:
         print(f"ERROR in view_patients: {e}")
+        import traceback
+        traceback.print_exc()
         logger.error(f"Firestore error in view_patients: {e}", exc_info=True)
         flash("Could not load your patients list. Please try again later.", "error")
         return redirect(url_for('dashboard'))
 
+@app.route('/debug_patients_detailed')
+@login_required()
+def debug_patients_detailed():
+    try:
+        debug_info = []
+        
+        # 1. Check session data
+        debug_info.append(f"=== SESSION DATA ===")
+        debug_info.append(f"user_id: {session.get('user_id')}")
+        debug_info.append(f"user_email: {session.get('user_email')}")
+        debug_info.append(f"user_name: {session.get('user_name')}")
+        debug_info.append(f"is_admin: {session.get('is_admin')}")
+        debug_info.append(f"institute: {session.get('institute')}")
+        debug_info.append(f"role: {session.get('role')}")
+        debug_info.append("")
+        
+        # 2. Check total patients in database
+        debug_info.append(f"=== DATABASE COUNTS ===")
+        all_patients = list(db.collection('patients').stream())
+        debug_info.append(f"Total patients in database: {len(all_patients)}")
+        
+        # 3. Check patients by physiotherapistId
+        my_patients_query = db.collection('patients').where(filter=FieldFilter('physiotherapistId', '==', session.get('user_id')))
+        my_patients = list(my_patients_query.stream())
+        debug_info.append(f"Patients for current user ID: {len(my_patients)}")
+        
+        # 4. Check patients by institute (if admin)
+        if session.get('is_admin') == 1 and session.get('institute'):
+            institute_patients_query = db.collection('patients').where(filter=FieldFilter('institute', '==', session.get('institute')))
+            institute_patients = list(institute_patients_query.stream())
+            debug_info.append(f"Patients in current institute: {len(institute_patients)}")
+        
+        debug_info.append("")
+        
+        # 5. Show sample patient data
+        debug_info.append(f"=== SAMPLE PATIENT DATA ===")
+        for i, patient_doc in enumerate(all_patients[:3]):  # Show first 3 patients
+            patient_data = patient_doc.to_dict()
+            debug_info.append(f"Patient {i+1}:")
+            debug_info.append(f"  Document ID: {patient_doc.id}")
+            debug_info.append(f"  Patient ID: {patient_data.get('patient_id', 'NOT SET')}")
+            debug_info.append(f"  Name: {patient_data.get('name', 'NOT SET')}")
+            debug_info.append(f"  PhysiotherapistId: {patient_data.get('physiotherapistId', 'NOT SET')}")
+            debug_info.append(f"  Institute: {patient_data.get('institute', 'NOT SET')}")
+            debug_info.append(f"  All keys: {list(patient_data.keys())}")
+            debug_info.append("")
+        
+        # 6. Check if current user has added any patients
+        debug_info.append(f"=== USER'S PATIENTS DETAIL ===")
+        if my_patients:
+            for i, patient_doc in enumerate(my_patients):
+                patient_data = patient_doc.to_dict()
+                debug_info.append(f"User's Patient {i+1}:")
+                debug_info.append(f"  Document ID: {patient_doc.id}")
+                debug_info.append(f"  Name: {patient_data.get('name')}")
+                debug_info.append(f"  Patient ID: {patient_data.get('patient_id')}")
+                debug_info.append(f"  Created: {patient_data.get('created_at')}")
+        else:
+            debug_info.append("No patients found for current user")
+        
+        return "<br>".join(debug_info)
+        
+    except Exception as e:
+        return f"Debug error: {str(e)}<br>Traceback: {traceback.format_exc()}"
 
 
 @app.route('/register_institute', methods=['GET', 'POST'])
