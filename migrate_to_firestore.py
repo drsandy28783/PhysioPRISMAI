@@ -66,6 +66,22 @@ for tbl in tables:
 
 conn.close()
 print("\n🎉 Migration script complete. Check Firestore Console.")
+
+# ─── MIGRATE old physio_id → physiotherapistId ───────────────────────
+print("\n-- Migrating old physio_id → physiotherapistId in patients --")
+patients = fs.collection('patients').stream()
+for doc in patients:
+    data = doc.to_dict()
+    # only update if the old field exists and the new one doesn’t
+    if 'physio_id' in data and 'physiotherapistId' not in data:
+        physio = data['physio_id']
+        doc.reference.update({
+            'physiotherapistId': physio
+        })
+        print(f"  • {doc.id}: set physiotherapistId = {physio}")
+print("→ physio_id migration finished.\n")
+# ────────────────────────────────────────────────────────────────────
+
 # ——— after your migration loop ———
 
 # 1. List the project your Admin SDK is using:

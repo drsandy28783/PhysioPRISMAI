@@ -240,7 +240,7 @@ def login():
 
             session['user_email'] = email
             session['user_name'] = user_data['name']
-            session['user_id'] = email
+            session['user_id']    = result.get('localId') 
             session['is_admin'] = 0
             session['role'] = 'individual'
             return redirect('/dashboard')
@@ -334,9 +334,7 @@ def view_patients():
             # Admin sees all patients in their institute
             query = patients_ref.where(filter=FieldFilter('institute', '==', session.get('institute')))
         else:
-            # Individual physio sees only their patients  
-            query = patients_ref.where(filter=FieldFilter('physio_id', '==', session.get('user_id')))
-        
+           query = patients_ref.where(filter=FieldFilter('physiotherapistId','==', session.get('user_id')))        
         # Apply search filters WITHOUT ordering to avoid index requirements
         if id_f:
             # Search by patient ID only
@@ -440,7 +438,7 @@ def login_institute():
 
             session['user_email'] = email
             session['user_name'] = user_data.get('name')
-            session['user_id'] = email
+            session['user_id']    = result.get('localId') 
             session['is_admin'] = user_data.get('is_admin', 0)
 
             if session['is_admin'] == 1:
@@ -633,7 +631,8 @@ def add_patient():
     if request.method == 'POST':
         # 1) collect form values
         data = {
-            'physio_id':       session.get('user_id'),
+            'physiotherapistId':    session.get('user_id'),
+            'physiotherapistEmail': session.get('user_email'),
             'name':            request.form['name'],
             'age_sex':         request.form['age_sex'],
             'contact':         request.form['contact'],
@@ -695,9 +694,9 @@ def subjective(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
+
     if request.method == 'POST':
         fields = [
             'body_structure', 'body_function', 'activity_performance',
@@ -720,8 +719,8 @@ def perspectives(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
 
     if request.method == 'POST':
         # ← UPDATED TO MATCH YOUR HTML FIELD NAMES
@@ -761,8 +760,8 @@ def initial_plan(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         sections = ['active_movements','passive_movements','passive_over_pressure',
                     'resisted_movements','combined_movements','special_tests','neuro_dynamic_examination']
@@ -784,9 +783,8 @@ def patho_mechanism(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         keys = [
             'area_involved', 'presenting_symptom', 'pain_type', 'pain_nature',
@@ -804,18 +802,42 @@ def patho_mechanism(patient_id):
 @app.route('/chronic_disease/<path:patient_id>', methods=['GET','POST'])
 @login_required()
 def chronic_disease(patient_id):
+    # ─── ACCESS CONTROL ─────────────────────────────────────────────────────────────────
+    # 1) Fetch the patient record
+    patient_ref = db.collection('patients').document(patient_id)
+    patient_doc = patient_ref.get()
+    if not patient_doc.exists:
+        flash("Patient not found.", "danger")
+        return redirect(url_for('view_patients'))
+    patient = patient_doc.to_dict()
+
+    # 2) If non-admin, block access unless this is your patient
+    if session.get('is_admin') == 0 and \
+       patient.get('physiotherapistId') != session.get('user_id'):
+        flash("Access denied.", "danger")
+        return redirect(url_for('view_patients'))
+    # ────────────────────────────────────────────────────────────────────────────────────
+
     if request.method == 'POST':
-        # Pull back *all* selected options as a Python list:
+        # Pull back all selected causes as a Python list
         causes = request.form.getlist('maintenance_causes')
         entry = {
-            'patient_id': patient_id,
-            'causes': causes,                            # <- store the list
-            'specific_factors': request.form.get('specific_factors', ''),
-            'timestamp': SERVER_TIMESTAMP
+            'patient_id':       patient_id,
+            'causes':           causes,
+            'specific_factors': request.form.get('specific_factors', '').strip(),
+            'timestamp':        SERVER_TIMESTAMP
         }
+        # Save the chronic-disease entry
         db.collection('chronic_diseases').add(entry)
-        return redirect(f'/clinical_flags/{patient_id}')
-    return render_template('chronic_disease.html', patient_id=patient_id)
+
+        # Then move on to the next screen
+        return redirect(url_for('clinical_flags', patient_id=patient_id))
+
+    # For GET, just render the form
+    return render_template(
+        'chronic_disease.html',
+        patient_id=patient_id
+    )
 
 
 @app.route('/clinical_flags/<path:patient_id>', methods=['GET', 'POST'])
@@ -826,9 +848,8 @@ def clinical_flags(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied."
-
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         entry = {
             'patient_id': patient_id,
@@ -854,8 +875,8 @@ def objective_assessment(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
 
     if request.method == 'POST':
         entry = {
@@ -879,9 +900,8 @@ def provisional_diagnosis(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         keys = [
             'likelihood', 'structure_fault', 'symptom', 'findings_support',
@@ -903,9 +923,8 @@ def smart_goals(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         keys = [
             'patient_goal', 'baseline_status', 'measurable_outcome',
@@ -927,9 +946,8 @@ def treatment_plan(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
     if request.method == 'POST':
         keys = ['treatment_plan', 'goal_targeted', 'reasoning', 'reference']
         entry = {k: request.form[k] for k in keys}
@@ -947,8 +965,8 @@ def follow_ups(patient_id):
     if not patient_doc.exists:
         return "Patient not found", 404
     patient = patient_doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied", 403
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
 
     # 2) handle new entry
     if request.method == 'POST':
@@ -987,16 +1005,23 @@ def view_follow_ups(patient_id):
     patient = doc.to_dict()
 
     # Access control
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
+    if session.get('is_admin') == 0 and \
+       patient.get('physiotherapistId') != session.get('user_id'):
         return "Access denied."
 
-    docs = (db.collection('follow_ups')
-              .where('patient_id', '==', patient_id)
-              .order_by('session_date', direction=firestore.Query.DESCENDING)
-              .stream())
+    docs = (
+        db.collection('follow_ups')
+          .where('patient_id', '==', patient_id)
+          .order_by('session_date', direction=firestore.Query.DESCENDING)
+          .stream()
+    )
     followups = [d.to_dict() for d in docs]
 
-    return render_template('view_follow_ups.html', patient=patient, followups=followups)
+    return render_template(
+        'view_follow_ups.html',
+        patient=patient,
+        followups=followups
+    )
 
 
 @app.route('/edit_patient/<path:patient_id>', methods=['GET', 'POST'])
@@ -1009,8 +1034,8 @@ def edit_patient(patient_id):
 
     patient = doc.to_dict()
 
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied", 403
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+      return "Access denied."
 
     if request.method == 'POST':
         updated_data = {
@@ -1033,9 +1058,9 @@ def patient_report(patient_id):
     if not doc.exists:
         return "Patient not found."
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get(
-            'physio_id') != session.get('user_id'):
-        return "Access denied."
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+      return "Access denied."
+
     # fetch each section
     def fetch_one(coll):
         d = db.collection(coll).where('patient_id', '==',
@@ -1064,8 +1089,9 @@ def download_report(patient_id):
     if not doc.exists:
         return "Patient not found.", 404
     patient = doc.to_dict()
-    if session.get('is_admin') == 0 and patient.get('physio_id') != session.get('user_id'):
-        return "Access denied.", 403
+    if session.get('is_admin') == 0 and patient.get('physiotherapistId') != session.get('user_id'):
+     return "Access denied."
+
 
     # 2) Fetch each section for the report
     def fetch_one(coll):
