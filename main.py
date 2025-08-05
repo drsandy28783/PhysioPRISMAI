@@ -52,6 +52,13 @@ openai.api_key = os.environ['OPENAI_API_KEY']
 # ─── FIREBASE INIT ───────────────────────────
 # Load the service-account JSON from a Render Secret File
 # ─── DEBUG: Inspect secret-file mount ─────────────────────────
+# ---- Handle service account JSON if present in env ----
+if os.environ.get('GOOGLE_APPLICATION_CREDENTIALS_JSON'):
+    # Write the JSON to a temp file and set GOOGLE_APPLICATION_CREDENTIALS to its path
+    with open('serviceAccount.json', 'w') as f:
+        f.write(os.environ['GOOGLE_APPLICATION_CREDENTIALS_JSON'])
+    os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = os.path.abspath('serviceAccount.json')
+
 SECRETS_DIR = "/etc/secrets"
 print("DEBUG: /etc/secrets exists?", os.path.isdir(SECRETS_DIR))
 if os.path.isdir(SECRETS_DIR):
